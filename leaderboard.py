@@ -16,7 +16,7 @@ for gemeente in gemlist:
     gemcode = gemeenten.loc[gemeenten['GEMEENTENAAM'] == gemeente].reset_index()['GEMEENTECODE'][0]
     bag, checkwoznum, wozfout, wozlen = Functies.checkWOZNUM(gemeente, gemeenten)
     foutlen = len(wozfout)
-    dif = Functies.getDifBagWoz(checkwoznum, [1,2,3]).fillna('')
+    dif = Functies.RD2Merc(Functies.getDifBagWoz(checkwoznum, [1,2,3]).fillna('')).drop(labels=['geometry'], axis=1)
     diflen = len(dif)
     wozfout['NUMJUIST'] = [Functies.getRightNummeraanduiding(bag, g) for g in wozfout.itertuples()]
     if((diflen == 0) & (foutlen == 0)):
@@ -27,6 +27,8 @@ for gemeente in gemlist:
     datetime = str(str(i.day) + '-' + str(i.month) + '-' + str(i.year) + ' ' + str(i.hour) + ':' + str(i.minute))
     row = {'gemcode' : gemcode, 'gemnaam' : gemeente, 'diflen' : diflen, 'foutlen' : foutlen, 'wozlen' : wozlen, 'score' : score, 'datetime' : datetime}
     leaderboard = leaderboard.append(row, ignore_index=True)
+    wozfout.to_csv(str(direc) + '/Data/' + gemcode + '_f.csv', index=False)
+    dif.to_csv(str(direc) + '/Data/' + gemcode + '_d.csv', index=False)
 leaderboard.index += 1
 
 leaderboard = leaderboard.sort_values(by=['score'], ascending=False)

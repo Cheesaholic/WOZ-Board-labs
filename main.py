@@ -31,11 +31,12 @@ def update_woztable(wttr, old, new):
         layout.children[1] = layoutnobut
         if(new == 'Nummeraanduidingen'):
             layout.children.append(loadinglong)
+            gemcode = gemeenten.loc[gemeenten['GEMEENTENAAM'] == plaats.value].reset_index()['GEMEENTECODE'][0]
             global wozfout
-            global checkwoznum
-            global bag
-            global wozlen
-            bag, checkwoznum, wozfout, wozlen = checkWOZNUM(plaats.value, gemeenten)
+            wozfout = pd.read_csv(str(direc) + '/work/Marnix/woz-board/Data/' + gemcode + '_f.csv')
+            global dif
+            dif = pd.read_csv(str(direc) + '/work/Marnix/woz-board/Data/' + gemcode + '_d.csv')
+            dif = dif.fillna('')
             if loadinglong in layout.children:
                 layout.children.remove(loadinglong)
             DifNULL.value = 'Selecteer...'
@@ -47,8 +48,6 @@ def update_woztable(wttr, old, new):
             NULLBut.on_click(partial(DifNULLButton, val='Onjuiste BAG-waarden'))
             layout1 = bokeh.layouts.layout([TableSelect, DifNULL], [DifBut, NULLBut])
             layout.children[1] = layout1
-        elif(new == 'WDO_WRD'):
-            print('WOZ!')
             
 # Functie die aangeroepen wordt bij het klikken op het dropdown-menu 'Plaats'
 def update_plaats(wttr, old, new):
@@ -60,11 +59,8 @@ def update_plaats(wttr, old, new):
         TableSelect.value = 'Selecteer...'
         NumBut = bokeh.models.widgets.buttons.Button(icon=FontAwesomeIcon(icon_name="map-marker", size=2),
              label="Nummeraanduidingen", button_type='primary')
-        WrdBut = bokeh.models.widgets.buttons.Button(icon=FontAwesomeIcon(icon_name="euro", size=2),
-             label="WOZ-waarden", button_type='warning')
         NumBut.on_click(partial(tableButton, val='Nummeraanduidingen'))
-        WrdBut.on_click(partial(tableButton, val='WOZ-waarden'))
-        layout1 = bokeh.layouts.layout([TableSelect],[NumBut],[WrdBut])
+        layout1 = bokeh.layouts.layout([TableSelect],[NumBut])
         layout.children.append(layout1)
     else:
         # Als op 'Selecteer...' wordt geklikt, gaat het dashboard terug naar de originele staat
@@ -81,14 +77,6 @@ def update_DifNULL(wttr, old, new):
         layout.children[1] = bokeh.layouts.row(TableSelect, DifNULL)
         # Voegt laad-afbeelding toe
         layout.children.append(loading)
-#         ldb = pd.read_csv(str(direc) + "/leaderboard/leaderboard.csv")
-#         ldb = pd.read_csv("/home/jovyan/work/Marnix/woz-board/leaderboard/leaderboard.csv")
-#         ldbpl = ldb.loc[ldb['gemnaam'] == plaats.value].reset_index()['plaats'][0]
-#         ldbdt = ldb.loc[ldb['gemnaam'] == plaats.value].reset_index()['datetime'][0].split()[0]
-#         global leaderbanner
-#         leaderbanner = Div(text="""<div class="alert alert-primary" role="alert">
-#   Gemeente """ + plaats.value + """ staat op plaats """ + str(ldbpl) + """ in het WOZ-Board. (""" + ldbdt + """)
-# </div>""", width=400)
         if(d_val == 'Onjuiste BAG-waarden'): 
             # Checkt of er meer dan één fout in de dataset zit.
             if len(wozfout) == 0:
@@ -107,7 +95,7 @@ def update_DifNULL(wttr, old, new):
             else:
                 wozoj = wozfout
                 # Maakt nieuwe kolom aan voor het zoeken van juiste nummeraanduidingen
-                wozoj['NUMJUIST'] = [Functies.getRightNummeraanduiding(bag, g) for g in wozoj.itertuples()]
+#                 wozoj['NUMJUIST'] = [Functies.getRightNummeraanduiding(bag, g) for g in wozoj.itertuples()]
                 # Vult NULL waarden
                 wozoj = wozoj.fillna('')
                 # Zet DataFrame om in Bokeh ColumnDataSource
@@ -126,7 +114,7 @@ def update_DifNULL(wttr, old, new):
                 layout.children.append(layoutNULL)
         elif(d_val == 'BAG-waarden met verkeerde informatie'):
             # Roept functie aan om regels met verkeerde informatie terug te halen. (1,2,3 is voor de filters in het dashboard (hoofdlettergevoeligheid ed.))
-            dif = getDifBagWoz(checkwoznum, [1,2,3]).fillna('')
+#             dif = getDifBagWoz(checkwoznum, [1,2,3]).fillna('')
             # Geeft melding als er geen foute regels worden gevonden
             if len(dif) == 0:
                 if loading in layout.children:
@@ -159,12 +147,13 @@ def update_DifNULL(wttr, old, new):
 # Functie die aangeroepen wordt als er een kaart en tabel gemaakt moeten worden
 def Dif_plot_table(dif):
     # Zet om naar Mercatorsysteem
-    wn = RD2Merc(dif)
+#     wn = RD2Merc(dif)
+    wn = dif
     # Zet om naar Bokeh tabel
     s1 = dfToCDS(wn, 'WOZNUMDif')
     # Maak kaart-object aan
     p = bokeh.plotting.figure(tools=['lasso_select', 'reset', 'box_zoom'
-                                , 'wheel_zoom', 'pan'], title=plaats.value + " (" + str(wozlen) + " WOZ_NUM objecten)", active_scroll='wheel_zoom', active_drag='pan')
+                                , 'wheel_zoom', 'pan'], title=plaats.value, active_scroll='wheel_zoom', active_drag='pan')
     # Gebruik achtergrondkaart van het Kadaster
     p.add_tile(nlmaps())
     # Maak adrespunten aan
@@ -199,8 +188,9 @@ def Dif_plot_table(dif):
 def update_capitalize(new):
     if len(layout.children) > 2:
         layout.children = [layout.children[0], layout.children[1]]
-    dif = getDifBagWoz(checkwoznum, new).fillna('')
-    Dif_plot_table(dif)
+    diff = getDifBagWoz(dif, new)
+    Dif_plot_table(diff)
+#     print('Filters zijn niet operatief')
 
 # Interactiviteit voor knoppen bij tabelkeuze
 def tableButton(val):
@@ -233,7 +223,7 @@ loadinglong = bokeh.layouts.layout([bokeh.layouts.layout([Div(text="""<br><div c
     </div><img src="https://cdn.dribbble.com/users/63485/screenshots/2513799/untitled-5.gif" alt="Dashboard is aan het laden...">""", width=500)])])
 
 # Tabel-select object initialiseren
-TableSelect = bokeh.models.widgets.inputs.Select(options=['Selecteer...', 'Nummeraanduidingen', 'WDO_WOZ'], title='Tabel')
+TableSelect = bokeh.models.widgets.inputs.Select(options=['Selecteer...', 'Nummeraanduidingen'], title='Tabel')
 
 # Tabel-select interactief maken
 TableSelect.on_change('value', update_woztable)
@@ -248,7 +238,10 @@ DifNULL = bokeh.models.widgets.inputs.Select(options=['Selecteer...', 'BAG-waard
 DifNULL.on_change('value', update_DifNULL)
 
 # plaats-select object initialiseren en interactief maken
-gemeenten, woonplaatsSelect = getAllWoonplaats()
+# gemeenten, woonplaatsSelect = getAllWoonplaats()
+gemeenten = pd.read_csv(str(direc) + '/work/Marnix/woz-board/Data/woonplaatsen.csv', dtype={'GEMEENTECODE' : str})
+woonplaatsSelect = pd.read_csv(str(direc) + '/work/Marnix/woz-board/Data/wooSelect.csv')
+woonplaatsSelect = list(woonplaatsSelect['list'])
 plaats = bokeh.models.widgets.inputs.Select(options=woonplaatsSelect,
         title='Gemeente', max_width=300)
 plaats.on_change('value', update_plaats)
